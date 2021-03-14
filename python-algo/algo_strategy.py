@@ -32,9 +32,9 @@ class AlgoStrategy(gamelib.AlgoCore):
         """
         gamelib.debug_write('Configuring your custom algo strategy...')
         self.config = config
-        global WALL, FACTORY, TURRET, SCOUT, DEMOLISHER, INTERCEPTOR, MP, SP
+        global WALL, SUPPORT, TURRET, SCOUT, DEMOLISHER, INTERCEPTOR, MP, SP
         WALL = config["unitInformation"][0]["shorthand"]
-        FACTORY = config["unitInformation"][1]["shorthand"]
+        SUPPORT = config["unitInformation"][1]["shorthand"]
         TURRET = config["unitInformation"][2]["shorthand"]
         SCOUT = config["unitInformation"][3]["shorthand"]
         DEMOLISHER = config["unitInformation"][4]["shorthand"]
@@ -74,32 +74,96 @@ class AlgoStrategy(gamelib.AlgoCore):
         If there are no stationary units to attack in the front, we will send Scouts to try and score quickly.
         """
         # First, place basic defenses
-        self.build_defences(game_state)
-        # Now build reactive defenses based on where the enemy scored
-        self.build_reactive_defense(game_state)
+        # self.build_defences(game_state)
+        # # Now build reactive defenses based on where the enemy scored
+        # self.build_reactive_defense(game_state)
 
         # If the turn is less than 5, stall with interceptors and wait to see enemy's base
-        if game_state.turn_number < 5:
-            self.stall_with_interceptors(game_state)
+
+        self.basic_defences(game_state)
+        self.build_reactive_defense(game_state)
+        self.additional_defences(game_state)
+        self.upgrade_defences(game_state)
+        self.add_supports(game_state)
+        
+        
+        while game_state.get_resource(MP) >= 9:
+          if game_state.get_resource(MP) >= 9:
+            self.aggro_attack(game_state)
+
+        self.stall_with_interceptors(game_state)
+            # # Now let's analyze the enemy base to see where their defenses are concentrated.
+            # # If they have many units in the front we can build a line for our demolishers to attack them at long range.
+            # if self.detect_enemy_unit(game_state, unit_type=None, valid_x=None, valid_y=[14, 15]) > 10:
+            #     self.demolisher_line_strategy(game_state)
+            # else:
+            #     # They don't have many units in the front so lets figure out their least defended area and send Scouts there.
+
+            #     # Only spawn Scouts every other turn
+            #     # Sending more at once is better since attacks can only hit a single scout at a time
+            #     if game_state.turn_number % 2 == 1:
+            #         # To simplify we will just check sending them from back left and right
+            #         scout_spawn_location_options = [[13, 0], [14, 0]]
+            #         best_location = self.least_damage_spawn_location(game_state, scout_spawn_location_options)
+            #         game_state.attempt_spawn(SCOUT, best_location, 1000)
+
+            #     # Lastly, if we have spare SP, let's build some Factories to generate more resources
+            #     factory_locations = [[13, 2], [14, 2], [13, 3], [14, 3]]
+            #     game_state.attempt_spawn(FACTORY, factory_locations)
+
+    def aggro_attack(self, game_state):
+      # [26, 12] or [1, 12]
+        destructor_locations1 = [[25, 11], [25, 11], [25, 11]]
+        destructor_locations2 = [[2, 11], [2, 11], [2, 11]]
+        randomnum =random.randint(0, 1)
+        if randomnum:
+          game_state.attempt_spawn(DEMOLISHER, destructor_locations1)
         else:
-            # Now let's analyze the enemy base to see where their defenses are concentrated.
-            # If they have many units in the front we can build a line for our demolishers to attack them at long range.
-            if self.detect_enemy_unit(game_state, unit_type=None, valid_x=None, valid_y=[14, 15]) > 10:
-                self.demolisher_line_strategy(game_state)
-            else:
-                # They don't have many units in the front so lets figure out their least defended area and send Scouts there.
+          game_state.attempt_spawn(DEMOLISHER, destructor_locations2)
 
-                # Only spawn Scouts every other turn
-                # Sending more at once is better since attacks can only hit a single scout at a time
-                if game_state.turn_number % 2 == 1:
-                    # To simplify we will just check sending them from back left and right
-                    scout_spawn_location_options = [[13, 0], [14, 0]]
-                    best_location = self.least_damage_spawn_location(game_state, scout_spawn_location_options)
-                    game_state.attempt_spawn(SCOUT, best_location, 1000)
+    def basic_defences(self, game_state):
+        wall_locations = [[0, 13], [1, 13], [2, 13], [3, 12], [4, 11], [5, 10], [6, 9], [7, 8], [8, 7], [9, 6], [27, 13], [26, 13], [25, 13], [23, 11], [24, 12], [22, 10], [21, 9], [20, 8], [19, 7], [18, 6]]
+        turret_locations = [[7, 9], [20, 9], [10, 6], [17, 6]]
+        game_state.attempt_spawn(WALL, wall_locations)
+        game_state.attempt_spawn(TURRET, turret_locations)
 
-                # Lastly, if we have spare SP, let's build some Factories to generate more resources
-                factory_locations = [[13, 2], [14, 2], [13, 3], [14, 3]]
-                game_state.attempt_spawn(FACTORY, factory_locations)
+    def additional_defences(self, game_state):
+        turret_locations = [[4, 12], [23, 12]]
+        support_locations = [[4, 11], [23, 11]]
+        # wall_locations =[[8, 12],[9, 12],[10, 12],[11, 12],[12, 12],[13, 12],[14, 12],[15, 12],[16, 12],[17, 12],[18, 12],[19, 12]]
+        turret_locations2 =[[8, 12],[19, 12]]
+        game_state.attempt_spawn(TURRET, turret_locations)
+        game_state.attempt_spawn(SUPPORT, support_locations)
+        game_state.attempt_spawn(TURRET, turret_locations2)
+
+    def upgrade_defences(self, game_state):
+        turret_locations = [[4, 12], [23, 12], [7, 9], [20, 9], [10, 6], [17, 6]]
+        wall_locations = [[4, 13], [23, 13], [7, 10], [20, 10], [10, 7], [17, 7]]
+        turret_locations2 =[[8, 12],[19, 12], [1, 12], [26, 12]]
+        wall_locations2 =[[8, 13],[19, 13], [1, 13], [26, 13]]
+        game_state.attempt_upgrade(turret_locations)
+        game_state.attempt_spawn(WALL, wall_locations)
+        game_state.attempt_upgrade(wall_locations)
+        game_state.attempt_spawn(TURRET, turret_locations2)
+        game_state.attempt_upgrade(turret_locations2)
+        game_state.attempt_spawn(WALL, wall_locations2)
+        game_state.attempt_upgrade(wall_locations2)
+
+    def add_supports(self, game_state):
+        support_location1 = [[5, 11]]
+        wall_location1 = [[5, 12]]
+        support_location2 = [[22, 11]]
+        wall_location2 = [[22, 12]]
+        if game_state.get_resource(SP) >= 11:
+          game_state.attempt_spawn(SUPPORT, support_location1)
+          game_state.attempt_spawn(WALL, wall_location1)
+          game_state.attempt_upgrade(support_location1)
+          game_state.attempt_upgrade(wall_location1)
+        if game_state.get_resource(SP) >= 11:
+          game_state.attempt_spawn(SUPPORT, support_location2)
+          game_state.attempt_spawn(WALL, wall_location2)
+          game_state.attempt_upgrade(support_location2)
+          game_state.attempt_upgrade(wall_location2)
 
     def build_defences(self, game_state):
         """
@@ -128,8 +192,12 @@ class AlgoStrategy(gamelib.AlgoCore):
         """
         for location in self.scored_on_locations:
             # Build turret one space above so that it doesn't block our own edge spawn locations
-            build_location = [location[0], location[1]+1]
+            build_location = [location[0], location[1]+3]
+            wall_location = [location[0], location[1]+4]
             game_state.attempt_spawn(TURRET, build_location)
+            game_state.attempt_upgrade(build_location)
+            game_state.attempt_spawn(WALL, wall_location)
+            game_state.attempt_upgrade(wall_location)
 
     def stall_with_interceptors(self, game_state):
         """
@@ -143,16 +211,18 @@ class AlgoStrategy(gamelib.AlgoCore):
         deploy_locations = self.filter_blocked_locations(friendly_edges, game_state)
         
         # While we have remaining MP to spend lets send out interceptors randomly.
-        while game_state.get_resource(MP) >= game_state.type_cost(INTERCEPTOR)[MP] and len(deploy_locations) > 0:
-            # Choose a random deploy location.
-            deploy_index = random.randint(0, len(deploy_locations) - 1)
-            deploy_location = deploy_locations[deploy_index]
-            
-            game_state.attempt_spawn(INTERCEPTOR, deploy_location)
-            """
-            We don't have to remove the location since multiple mobile 
-            units can occupy the same space.
-            """
+        # while game_state.get_resource(MP) >= game_state.type_cost(INTERCEPTOR)[MP] and len(deploy_locations) > 0:
+        if len(deploy_locations) > 0:
+          for i in range(2):
+              # Choose a random deploy location.
+              deploy_index = random.randint(0, len(deploy_locations) - 1)
+              deploy_location = deploy_locations[deploy_index]
+              
+              game_state.attempt_spawn(INTERCEPTOR, deploy_location)
+              """
+              We don't have to remove the location since multiple mobile 
+              units can occupy the same space.
+              """
 
     def demolisher_line_strategy(self, game_state):
         """
@@ -160,7 +230,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         """
         # First let's figure out the cheapest unit
         # We could just check the game rules, but this demonstrates how to use the GameUnit class
-        stationary_units = [WALL, TURRET, FACTORY]
+        stationary_units = [WALL, TURRET, SUPPORT]
         cheapest_unit = WALL
         for unit in stationary_units:
             unit_class = gamelib.GameUnit(unit, game_state.config)
